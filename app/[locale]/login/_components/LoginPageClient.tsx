@@ -8,7 +8,6 @@ import { loginThunk } from "@/lib/store/auth/authThunks";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
-import { generateCodeChallenge, generateCodeVerifier } from "@/lib/pkce";
 
 export default function LoginPageClient() {
   const [email, setEmail] = useState("");
@@ -27,56 +26,8 @@ export default function LoginPageClient() {
     try {
       const response = await dispatch(loginThunk({ email, password })).unwrap();
       if (response.user) {
-        if (response.user.role == "customer") {
-          router.push("/");
-        } else if (response.user.role == "tenant_admin") {
-          const codeVerifier = generateCodeVerifier();
-          const codeChallenge = await generateCodeChallenge(codeVerifier);
-          const environment = process.env.NEXT_PUBLIC_ENVIRONMENT
-            ? process.env.NEXT_PUBLIC_ENVIRONMENT
-            : "prod";
-          const redirectUri =
-            environment == "dev"
-              ? `${window.location.origin}/auth/callback`
-              : "http://kalptree.xyz/auth/callback";
-          const res = await fetch("/api/auth/sso/create", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-tenant-db": process.env.NEXT_PUBLIC_TENANT_ID!,
-            },
-            body: JSON.stringify({
-              codeChallenge,
-              codeVerifier,
-              redirectUri,
-            }),
-            credentials: "include",
-          });
-
-          try {
-            if (res.ok) {
-              const responseData = await res.json();
-              if (responseData.success) {
-                toast.success("Login Successful!");
-                window.open(redirectUri + `?code=${responseData.code}`, "_blank");
-                router.push("/");
-              } else {
-                toast.success("Welcome back! (SSO unavailable)");
-                router.push("/");
-              }
-            } else {
-              console.warn("SSO endpoint returned an error status:", res.status);
-              toast.success("Welcome back! (SSO unavailable)");
-              router.push("/");
-            }
-          } catch (err) {
-            console.error("Failed to parse SSO response", err);
-            toast.success("Welcome back! (SSO unavailable)");
-            router.push("/");
-          }
-        } else {
-          toast.success("Welcome back!");
-        }
+        toast.success("Welcome back!");
+        router.push("/");
       }
     } catch (err: any) {
       const errorMessage = typeof err === 'string' ? err : (err?.message || "Authentication failed");

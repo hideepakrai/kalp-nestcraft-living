@@ -87,7 +87,7 @@ export default function AdminBar() {
         {/* Left — Dashboard link */}
         <div className="flex items-center shrink-0 admin-bar-scroll">
           <Link
-            href="/kalpauth"
+            href="https://zerolive.kalptree.xyz/login"
             target="_blank"
             className="flex items-center gap-2 text-white/80 hover:text-white transition-colors duration-200 font-bold uppercase tracking-wider text-[11px]"
           >

@@ -6,7 +6,6 @@ import { loginThunk } from '@/lib/store/auth/authThunks';
 import { setError } from '@/lib/store/auth/authSlice';
 import { Eye, EyeOff, LogIn, AlertCircle, Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { generateCodeChallenge, generateCodeVerifier } from '@/lib/pkce';
 import { toast } from 'sonner';
 
 export default function LoginFormSection() {
@@ -39,40 +38,8 @@ export default function LoginFormSection() {
     try {
       const response = await dispatch(loginThunk({ email, password })).unwrap();
       if (response.user) {
-        if (response.user.role == "customer") {
-          router.push("/");
-        } else if (response.user.role == "tenant_admin") {
-          const codeVerifier = generateCodeVerifier();
-          const codeChallenge = await generateCodeChallenge(codeVerifier);
-          const environment = process.env.NEXT_PUBLIC_ENVIRONMENT
-            ? process.env.NEXT_PUBLIC_ENVIRONMENT
-            : "prod";
-          const redirectUri =
-            environment == "dev"
-              ? `${window.location.origin}/auth/callback`
-              : "http://kalptree.xyz/auth/callback";
-          const res = await fetch("/api/auth/sso/create", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-tenant-db": process.env.NEXT_PUBLIC_TENANT_ID!,
-            },
-            body: JSON.stringify({
-              codeChallenge,
-              codeVerifier,
-              redirectUri,
-            }),
-            credentials: "include",
-          });
-
-          const response = await res.json();
-
-          if (response.success) {
-            window.open(redirectUri + `?code=${response.code}`, "_blank");
-            router.push("/");
-          }
-        }
         toast.success("Welcome back!");
+        router.push("/");
       }
     } catch (err: any) {
       setError(err || "Authentication failed");
