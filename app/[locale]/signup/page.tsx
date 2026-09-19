@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import SignupPageClient from "./_components/SignupPageClient";
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function SignupPage() {
-  return <SignupPageClient />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <SignupPageClient />
+    </Suspense>
+  );
 }

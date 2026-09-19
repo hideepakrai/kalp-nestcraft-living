@@ -3,6 +3,7 @@ import {
   getUserThunk,
   loginThunk,
   logoutThunk,
+  signupThunk,
   updateProfileThunk,
 } from "./authThunks";
 import { ProductFormState } from "../products/productsSlices";
@@ -34,6 +35,7 @@ interface User {
   email?: string;
   first_name?: string;
   last_name?: string;
+  phone?: string;
   id?: string;
   _id?: string;
   addresses?: Address[];
@@ -127,6 +129,20 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(logoutThunk.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(signupThunk.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(signupThunk.fulfilled, (state, action: any) => {
+        state.user = action.payload.session || action.payload.customer || action.payload.user;
+        state.isAuthenticated = true;
+        state.isLoading = false;
+        state.error = null;
+      })
+      .addCase(signupThunk.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
       })

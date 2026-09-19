@@ -22,6 +22,16 @@ import {
   Plus,
   Check,
   LogIn,
+  User,
+  Phone,
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  UserCheck,
+  UserPlus,
+  LogOut,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { getGateway } from "@/lib/paymentgateway/resgistry";
@@ -31,7 +41,7 @@ import {
   createCheckoutQuote,
   toCheckoutAddress,
 } from "@/lib/commerce/checkout-client";
-import { loginThunk } from "@/lib/store/auth/authThunks";
+import { loginThunk, signupThunk, logoutThunk } from "@/lib/store/auth/authThunks";
 
 const tenantId = process.env.NEXT_PUBLIC_TENANT_ID;
 
@@ -71,11 +81,20 @@ const CheckoutPage = () => {
     string | null
   >(null);
   const dispatch = useAppDispatch();
-  const [showAccountLogin, setShowAccountLogin] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [showPassword, setShowPassword] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const [signupFirstName, setSignupFirstName] = useState("");
+  const [signupLastName, setSignupLastName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupError, setSignupError] = useState<string | null>(null);
+  const [isSigningUp, setIsSigningUp] = useState(false);
   // Coupon / Promotion State
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
@@ -173,16 +192,46 @@ const CheckoutPage = () => {
         loginThunk({ email: loginEmail.trim(), password: loginPassword }),
       ).unwrap();
       setLoginPassword("");
-      setShowAccountLogin(false);
-    } catch (error) {
+    } catch (error: any) {
       setLoginError(
         typeof error === "string"
           ? error
-          : "We could not sign you in. Check your details and try again.",
+          : error?.detail || error?.message || "We could not sign you in. Check your details and try again.",
       );
     } finally {
       setIsSigningIn(false);
     }
+  };
+
+  const handleCheckoutSignup = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSignupError(null);
+    setIsSigningUp(true);
+
+    try {
+      await dispatch(
+        signupThunk({
+          firstName: signupFirstName.trim(),
+          lastName: signupLastName.trim(),
+          email: signupEmail.trim(),
+          phone: signupPhone.trim() || undefined,
+          password: signupPassword,
+        }),
+      ).unwrap();
+      setSignupPassword("");
+    } catch (error: any) {
+      setSignupError(
+        typeof error === "string"
+          ? error
+          : error?.detail || error?.message || "Registration failed. Please check your details and try again.",
+      );
+    } finally {
+      setIsSigningUp(false);
+    }
+  };
+
+  const handleCheckoutLogout = async () => {
+    await dispatch(logoutThunk()).unwrap().catch(() => {});
   };
 
   const handleApplyCoupon = (e: React.FormEvent) => {
@@ -548,7 +597,7 @@ const CheckoutPage = () => {
                 <input
                   required
                   type="text"
-                  defaultValue={data?.firstName || ""}
+                  defaultValue={data?.firstName || user?.first_name || (user?.name ? user.name.split(" ")[0] : "") || ""}
                   name={`${prefix}FirstName`}
                   className="w-full h-14 px-6 rounded-xl bg-surface border border-border outline-none focus:border-secondary transition-all font-semibold"
                 />
@@ -560,7 +609,7 @@ const CheckoutPage = () => {
                 <input
                   required
                   type="text"
-                  defaultValue={data?.lastName || ""}
+                  defaultValue={data?.lastName || user?.last_name || (user?.name ? user.name.split(" ").slice(1).join(" ") : "") || ""}
                   name={`${prefix}LastName`}
                   className="w-full h-14 px-6 rounded-xl bg-surface border border-border outline-none focus:border-secondary transition-all font-semibold"
                 />
@@ -587,7 +636,7 @@ const CheckoutPage = () => {
                 <input
                   required
                   type="tel"
-                  defaultValue={data?.phone || ""}
+                  defaultValue={data?.phone || user?.phone || ""}
                   name={`${prefix}Phone`}
                   className="w-full h-14 px-6 rounded-xl bg-surface border border-border outline-none focus:border-secondary transition-all font-semibold"
                 />
@@ -758,102 +807,332 @@ const CheckoutPage = () => {
       <div className="grid lg:grid-cols-[1fr_400px] gap-16 items-start">
         {/* Checkout Form */}
         <div className="space-y-12">
-          <section
-            aria-label="Checkout account"
-            className="rounded-2xl border border-border bg-surface/50 p-5"
-          >
-            {isAuthenticated ? (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-secondary">
-                    Account connected
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {user?.email || user?.name || "Signed-in customer"}
-                  </p>
-                </div>
-                <p className="text-sm text-muted">
-                  This Order will be available in your account.
-                </p>
-              </div>
-            ) : (
-              <div>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {!isAuthenticated ? (
+            <div className="rounded-3xl border border-border bg-surface/80 p-8 sm:p-10 shadow-sm space-y-8 backdrop-blur-sm">
+              <div className="flex items-start justify-between gap-4 pb-6 border-b border-border">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center font-bold shrink-0">
+                    <UserCheck size={24} />
+                  </div>
                   <div>
-                    <p className="text-sm font-bold text-foreground">
-                      Already have an account?
-                    </p>
-                    <p className="mt-1 text-sm text-muted">
-                      Sign in here without leaving Checkout or losing this Cart.
+                    <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                      Customer Authentication
+                    </h2>
+                    <p className="text-sm text-muted mt-1">
+                      Please sign in or create an account to proceed with your delivery details and payment.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginError(null);
-                      setShowAccountLogin((current) => !current);
-                    }}
-                    className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-secondary px-5 text-sm font-bold text-secondary transition-colors hover:bg-secondary hover:text-white"
-                    aria-expanded={showAccountLogin}
-                  >
-                    <LogIn size={17} />
-                    {showAccountLogin ? "Continue as guest" : "Sign in"}
-                  </button>
                 </div>
+              </div>
 
-                <AnimatePresence initial={false}>
-                  {showAccountLogin && (
-                    <motion.form
-                      key="checkout-login"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      onSubmit={handleCheckoutLogin}
-                      className="mt-5 grid gap-4 overflow-hidden border-t border-border pt-5 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
-                    >
-                      <label className="grid gap-2 text-xs font-bold uppercase tracking-wider text-muted">
-                        Email
+              {/* Tab Selector */}
+              <div className="flex rounded-2xl bg-background p-1.5 border border-border">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setLoginError(null);
+                    setSignupError(null);
+                  }}
+                  className={`flex-1 py-3.5 px-6 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                    authMode === "login"
+                      ? "bg-secondary text-white shadow-sm"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  <LogIn size={18} />
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("signup");
+                    setLoginError(null);
+                    setSignupError(null);
+                  }}
+                  className={`flex-1 py-3.5 px-6 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                    authMode === "signup"
+                      ? "bg-secondary text-white shadow-sm"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  <UserPlus size={18} />
+                  Create Account
+                </button>
+              </div>
+
+              {/* Sign In Form */}
+              {authMode === "login" && (
+                <form onSubmit={handleCheckoutLogin} className="space-y-5">
+                  {loginError && (
+                    <div className="p-4 flex items-center gap-3 text-sm font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-900/50">
+                      <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                      <span>{loginError}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-[1px] text-muted ml-1">
+                      Email Address *
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted group-focus-within:text-secondary transition-colors">
+                        <Mail size={18} />
+                      </div>
+                      <input
+                        type="email"
+                        required
+                        autoComplete="email"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        placeholder="customer@example.com"
+                        className="w-full h-14 pl-12 pr-4 rounded-xl bg-background border border-border outline-none focus:border-secondary transition-all font-semibold text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-[1px] text-muted ml-1">
+                      Password *
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted group-focus-within:text-secondary transition-colors">
+                        <Lock size={18} />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        autoComplete="current-password"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full h-14 pl-12 pr-12 rounded-xl bg-background border border-border outline-none focus:border-secondary transition-all font-semibold text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted hover:text-foreground transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSigningIn}
+                    className="w-full h-14 bg-secondary text-white rounded-full font-bold uppercase tracking-wider text-sm hover:bg-secondary/90 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed mt-4"
+                  >
+                    {isSigningIn ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        Sign In & Proceed to Checkout
+                        <ArrowRight size={18} />
+                      </>
+                    )}
+                  </button>
+
+                  <div className="text-center pt-2">
+                    <p className="text-xs text-muted">
+                      New to Nestcraft?{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode("signup");
+                          setLoginError(null);
+                        }}
+                        className="text-secondary font-bold hover:underline"
+                      >
+                        Create an account
+                      </button>
+                    </p>
+                  </div>
+                </form>
+              )}
+
+              {/* Create Account Form */}
+              {authMode === "signup" && (
+                <form onSubmit={handleCheckoutSignup} className="space-y-5">
+                  {signupError && (
+                    <div className="p-4 flex items-center gap-3 text-sm font-semibold text-red-600 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-900/50">
+                      <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                      <span>{signupError}</span>
+                    </div>
+                  )}
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-[1px] text-muted ml-1">
+                        First Name *
+                      </label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted group-focus-within:text-secondary transition-colors">
+                          <User size={18} />
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          value={signupFirstName}
+                          onChange={(e) => setSignupFirstName(e.target.value)}
+                          placeholder="First Name"
+                          className="w-full h-14 pl-12 pr-4 rounded-xl bg-background border border-border outline-none focus:border-secondary transition-all font-semibold text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-[1px] text-muted ml-1">
+                        Last Name *
+                      </label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted group-focus-within:text-secondary transition-colors">
+                          <User size={18} />
+                        </div>
+                        <input
+                          type="text"
+                          required
+                          value={signupLastName}
+                          onChange={(e) => setSignupLastName(e.target.value)}
+                          placeholder="Last Name"
+                          className="w-full h-14 pl-12 pr-4 rounded-xl bg-background border border-border outline-none focus:border-secondary transition-all font-semibold text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-[1px] text-muted ml-1">
+                        Email Address *
+                      </label>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted group-focus-within:text-secondary transition-colors">
+                          <Mail size={18} />
+                        </div>
                         <input
                           type="email"
+                          required
                           autoComplete="email"
-                          required
-                          value={loginEmail}
-                          onChange={(event) => setLoginEmail(event.target.value)}
-                          className="h-11 rounded-xl border border-border bg-background px-4 text-sm font-medium normal-case tracking-normal text-foreground outline-none focus:border-secondary"
+                          value={signupEmail}
+                          onChange={(e) => setSignupEmail(e.target.value)}
+                          placeholder="customer@example.com"
+                          className="w-full h-14 pl-12 pr-4 rounded-xl bg-background border border-border outline-none focus:border-secondary transition-all font-semibold text-sm"
                         />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-[1px] text-muted ml-1">
+                        Phone Number
                       </label>
-                      <label className="grid gap-2 text-xs font-bold uppercase tracking-wider text-muted">
-                        Password
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted group-focus-within:text-secondary transition-colors">
+                          <Phone size={18} />
+                        </div>
                         <input
-                          type="password"
-                          autoComplete="current-password"
-                          required
-                          value={loginPassword}
-                          onChange={(event) => setLoginPassword(event.target.value)}
-                          className="h-11 rounded-xl border border-border bg-background px-4 text-sm font-medium normal-case tracking-normal text-foreground outline-none focus:border-secondary"
+                          type="tel"
+                          value={signupPhone}
+                          onChange={(e) => setSignupPhone(e.target.value)}
+                          placeholder="+91 98765 43210"
+                          className="w-full h-14 pl-12 pr-4 rounded-xl bg-background border border-border outline-none focus:border-secondary transition-all font-semibold text-sm"
                         />
-                      </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-black uppercase tracking-[1px] text-muted ml-1">
+                      Password (min 6 characters) *
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-muted group-focus-within:text-secondary transition-colors">
+                        <Lock size={18} />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        minLength={6}
+                        autoComplete="new-password"
+                        value={signupPassword}
+                        onChange={(e) => setSignupPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full h-14 pl-12 pr-12 rounded-xl bg-background border border-border outline-none focus:border-secondary transition-all font-semibold text-sm"
+                      />
                       <button
-                        type="submit"
-                        disabled={isSigningIn}
-                        className="h-11 rounded-full bg-secondary px-6 text-sm font-bold text-white transition-opacity disabled:cursor-wait disabled:opacity-60"
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted hover:text-foreground transition-colors"
                       >
-                        {isSigningIn ? "Signing in…" : "Sign in"}
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
-                      {loginError && (
-                        <p role="alert" className="text-sm font-semibold text-red-600 sm:col-span-3">
-                          {loginError}
-                        </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSigningUp}
+                    className="w-full h-14 bg-secondary text-white rounded-full font-bold uppercase tracking-wider text-sm hover:bg-secondary/90 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed mt-4"
+                  >
+                    {isSigningUp ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        Create Account & Proceed to Checkout
+                        <ArrowRight size={18} />
+                      </>
+                    )}
+                  </button>
+
+                  <div className="text-center pt-2">
+                    <p className="text-xs text-muted">
+                      Already have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode("login");
+                          setSignupError(null);
+                        }}
+                        className="text-secondary font-bold hover:underline"
+                      >
+                        Sign in instead
+                      </button>
+                    </p>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : (
+            <>
+              <section
+                aria-label="Checkout account"
+                className="rounded-2xl border border-border bg-surface/70 p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-secondary/15 text-secondary flex items-center justify-center font-bold shrink-0">
+                    <User size={18} />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[1.5px] text-secondary">
+                      Account connected
+                    </p>
+                    <p className="text-sm font-bold text-foreground">
+                      {user?.name || [user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email || "Customer"}
+                      {user?.email && (
+                        <span className="text-muted font-normal ml-2">({user.email})</span>
                       )}
-                      <p className="text-xs text-muted sm:col-span-3">
-                        Guest Checkout remains available; close this panel to continue without an account.
-                      </p>
-                    </motion.form>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-          </section>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCheckoutLogout}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-muted hover:text-red-500 transition-colors self-start sm:self-auto px-3 py-1.5 rounded-lg border border-border hover:border-red-200"
+                >
+                  <LogOut size={14} />
+                  Switch account
+                </button>
+              </section>
 
           {/* Steps Indicator */}
           <div className="flex items-center gap-6">
@@ -1203,6 +1482,8 @@ const CheckoutPage = () => {
               </button>
             </div>
           </form>
+        </>
+      )}
         </div>
 
         {/* Summary Sidebar */}

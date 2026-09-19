@@ -52,8 +52,9 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   const cookieStore = await cookies();
-  const tenantId = process.env.NEXT_PUBLIC_TENANT_ID;
+  const tenantId = process.env.NEXT_PUBLIC_TENANT_ID || process.env.DB_NAME;
   const authCookieNames = [
+    tenantId ? `${tenantId}_auth_token` : null,
     tenantId ? `auth_token_${tenantId}` : null,
     "kalp_session",
     "auth_token",

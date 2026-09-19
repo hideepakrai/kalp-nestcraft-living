@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/lib/store/store";
 import { signupThunk } from "@/lib/store/auth/authThunks";
 import { toast } from "sonner";
 import Link from "next/link";
-import { User, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff, ArrowRight, Phone } from "lucide-react";
 import { useAppSelector } from "@/lib/store/hooks";
 import { setCredentials } from "@/lib/store/auth/authSlice";
 
@@ -15,12 +15,14 @@ export default function SignupPageClient() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirect") || "/";
   const dispatch = useDispatch<AppDispatch>();
-  const {businessBlueprint} = useAppSelector(state=>state.businessBlueprint)
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,16 +34,14 @@ export default function SignupPageClient() {
           first_name: firstName,
           last_name: lastName,
           email,
+          phone: phone || undefined,
           password,
-          tenant_slug: businessBlueprint?.tenant_slug,
-          role:"customer"
         }),
       ).unwrap();
-       console.log("sign up--", res)
-      if (res.session) {
-        dispatch(setCredentials({ user: res.session }));
+      if (res.session || res.customer) {
+        dispatch(setCredentials({ user: res.session || res.customer }));
         toast.success("Account created successfully! Welcome to the family.");
-        router.push("/");
+        router.push(redirectUrl);
       }
     } catch (err: any) {
       console.log("errriiii", err);
@@ -140,6 +140,24 @@ export default function SignupPageClient() {
 
               <div>
                 <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
+                  Phone Number
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground group-focus-within:text-[#0d6533] transition-colors">
+                    <Phone size={18} />
+                  </div>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full flex h-11 rounded-xl border border-border bg-slate-50 pl-11 pr-4 text-sm font-medium text-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-[#0d6533]/20 focus:border-[#0d6533] shadow-sm"
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
                   Password
                 </label>
                 <div className="relative group">
@@ -209,7 +227,7 @@ export default function SignupPageClient() {
             <p className="text-sm text-muted-foreground font-medium">
               Already have an account?{" "}
               <Link
-                href="/login"
+                href={redirectUrl !== "/" ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : "/login"}
                 className="text-[#0d6533] font-black hover:underline"
               >
                 Sign In

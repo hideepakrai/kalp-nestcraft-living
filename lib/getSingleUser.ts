@@ -9,12 +9,23 @@ export const getAuthUser = cache(async (token: string) => {
   const tenantId = process.env.NEXT_PUBLIC_TENANT_ID;
 
   try {
-    const res = await fetch(`${API_URL}/api/auth/me`, {
+    let res = await fetch(`${API_URL}/auth/customer/me`, {
       headers: {
         Authorization: `Bearer ${token}`,
         "x-tenant-db": tenantId || "",
+        "x-tenant-slug": process.env.NEXT_PUBLIC_TENANT_SLUG || "nestcraft",
       } as HeadersInit,
     });
+
+    if (!res.ok) {
+      res = await fetch(`${API_URL}/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "x-tenant-db": tenantId || "",
+          "x-tenant-slug": process.env.NEXT_PUBLIC_TENANT_SLUG || "nestcraft",
+        } as HeadersInit,
+      });
+    }
 
     const data = await res.json();
     return serialize(data?.session ?? data?.user ?? data?.data?.session ?? data?.data?.user ?? data);

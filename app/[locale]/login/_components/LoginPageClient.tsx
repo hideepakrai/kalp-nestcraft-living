@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/lib/store/store";
 import { loginThunk } from "@/lib/store/auth/authThunks";
@@ -16,6 +16,8 @@ export default function LoginPageClient() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirect") || "/";
   const dispatch = useDispatch<AppDispatch>();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -27,7 +29,7 @@ export default function LoginPageClient() {
       const response = await dispatch(loginThunk({ email, password })).unwrap();
       if (response.user) {
         toast.success("Welcome back!");
-        router.push("/");
+        router.push(redirectUrl);
       }
     } catch (err: any) {
       const errorMessage = typeof err === 'string' ? err : (err?.message || "Authentication failed");
@@ -157,24 +159,24 @@ export default function LoginPageClient() {
             </button>
           </form>
 
-          {/* <div className="mt-10 text-center">
+          <div className="mt-10 text-center">
             <p className="text-sm text-muted-foreground font-medium">
               New to Nestcraft?{" "}
               <Link
-                href="/signup"
+                href={redirectUrl !== "/" ? `/signup?redirect=${encodeURIComponent(redirectUrl)}` : "/signup"}
                 className="text-[#0d6533] font-black hover:underline"
               >
                 Create an account
               </Link>
             </p>
-          </div> */}
+          </div>
         </div>
       </div>
 
       {/* Right Side - Image */}
       <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
         <img
-          src="assets/Image/nestcraft-img.jpeg"
+          src="/assets/Image/nestcraft-img.jpeg"
           alt="Lush green background"
           className="absolute inset-0 w-full h-full object-cover animate-in fade-in zoom-in duration-1000"
         />
